@@ -24,6 +24,7 @@ private slots:
     void ClearSend_pushButton_clicked();
     void ClearRecived_pushButton_clicked();
     void readSerialDataSlot();
+    void CheckBox_timing_stateChanged();
 
 
 private:

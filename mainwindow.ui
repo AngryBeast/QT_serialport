@@ -125,7 +125,7 @@
        <item>
         <widget class="QCheckBox" name="checkBox_hexdisplay">
          <property name="text">
-          <string>16进制发送</string>
+          <string>16进制接收</string>
          </property>
         </widget>
        </item>

@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QSerialPortInfo>
+#include <QDateTime>
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -27,6 +28,7 @@ void MainWindow::InitPort()
 {
     SeachPort();
 
+    MyTimer = new QTimer(this);
     QStringList baudList;//波特率
     QStringList parityList;//校验位
     QStringList dataBitsList;//数据位
@@ -53,11 +55,19 @@ void MainWindow::InitPort()
     ui->comboBox_stopBits->addItems(stopBitsList);//停止位
     ui->comboBox_stopBits->setCurrentIndex(0);
 
+    //设置只能输入数的范围
+    class QValidator *validator = new QIntValidator(0,99999,this);
+    ui->lineEdit->setValidator(validator);
+
     connect(ui->pushButton_openSerial,&QPushButton::clicked,this,&MainWindow::Open_pushButton_clicked);
     connect(ui->pushButton_send,&QPushButton::clicked,this,&MainWindow::Send_pushButton_clicked);
     connect(ui->pushButton_clearSend,&QPushButton::clicked,this,&MainWindow::ClearSend_pushButton_clicked);
     connect(ui->pushButton_clearRecived,&QPushButton::clicked,this,&MainWindow::ClearRecived_pushButton_clicked);
     connect(&MySerial,&QSerialPort::readyRead,this,&MainWindow::readSerialDataSlot);
+
+    //connect(MyTimer,&QTimer::timeout,this,&MainWindow::Send_pushButton_clicked);
+    connect(ui->checkBox_timing,&QCheckBox::clicked,this,&MainWindow::CheckBox_timing_stateChanged);
+
 }
 
 void MainWindow::SeachPort()
@@ -165,7 +175,8 @@ void MainWindow::Send_pushButton_clicked()
         if(!ui->textEdit_send->toPlainText().isEmpty())//发送区不为空
         {
             SendData = ui->textEdit_send->toPlainText();//获取发送区的数据
-            if(ui->checkBox_hexsend->isChecked()==true)//SendCheckBox被选中HEX发送
+
+            if(ui->checkBox_hexsend->isChecked())//SendCheckBox被选中HEX发送
             {
                 Send.append(SendData).toHex();//转HEX存储
                 // qDebug()<<SendHex<<endl;
@@ -175,6 +186,12 @@ void MainWindow::Send_pushButton_clicked()
                 Send.append(SendData);
                 //qDebug()<<SendHex<<endl;
             }
+
+            if(ui->checkBox_sendln->isChecked())    //发送新行
+            {
+                Send.append("\r\n");
+            }
+
             MySerial.write(Send,Send.length());//写入缓冲区
         }
         else//发送区为空
@@ -195,6 +212,12 @@ void MainWindow::readSerialDataSlot()
 
     QByteArray readData = MySerial.readAll();//读取串口数据
 
+    if (ui->checkBox_time->isChecked())
+    {
+        QDateTime curDateTime=QDateTime::currentDateTime();
+        ui->textEdit_recived->append("[" + curDateTime.time().toString() + "]");
+    }
+
     if(!readData.isNull())//将读到的数据显示到数据接收区
     {
         if(ui->checkBox_hexdisplay->isChecked())//选中HEX显示
@@ -210,6 +233,21 @@ void MainWindow::readSerialDataSlot()
         readData.clear();//清除接收缓存
     }
 
+}
+
+void MainWindow::CheckBox_timing_stateChanged()
+{
+    connect(MyTimer,&QTimer::timeout,this,&MainWindow::Send_pushButton_clicked);
+    if (ui->checkBox_timing->isChecked())
+    {
+        MyTimer->start(ui->lineEdit->text().toInt());
+//        qDebug() << ui->lineEdit->text().toInt();
+    }
+    else
+    {
+//        qDebug() << "down" << Qt::endl;
+        MyTimer->stop();
+    }
 }
 
 void MainWindow::ClearSend_pushButton_clicked()
