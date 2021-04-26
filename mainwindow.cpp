@@ -4,6 +4,9 @@
 #include <QMessageBox>
 #include <QSerialPortInfo>
 #include <QDateTime>
+#include <QFile>
+#include <QFileDialog>
+#include <QTextCodec>
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -27,6 +30,9 @@ MainWindow::~MainWindow()
 void MainWindow::InitPort()
 {
     SeachPort();
+
+    Timer = new QTimer(this);
+    Timer->start(1000);
 
     MyTimer = new QTimer(this);
     QStringList baudList;//波特率
@@ -59,14 +65,24 @@ void MainWindow::InitPort()
     class QValidator *validator = new QIntValidator(0,99999,this);
     ui->lineEdit->setValidator(validator);
 
+    QPalette pa;
+    pa.setColor(QPalette::WindowText,Qt::red);
+    ui->label_state->setText("未连接");
+    ui->label_state->setPalette(pa);
+
     connect(ui->pushButton_openSerial,&QPushButton::clicked,this,&MainWindow::Open_pushButton_clicked);
     connect(ui->pushButton_send,&QPushButton::clicked,this,&MainWindow::Send_pushButton_clicked);
     connect(ui->pushButton_clearSend,&QPushButton::clicked,this,&MainWindow::ClearSend_pushButton_clicked);
     connect(ui->pushButton_clearRecived,&QPushButton::clicked,this,&MainWindow::ClearRecived_pushButton_clicked);
+    connect(ui->pushButton_loadFile,&QPushButton::clicked,this,&MainWindow::LoadFile_pushButton_clicked);
+    connect(ui->pushButton_savaFile,&QPushButton::clicked,this,&MainWindow::SaveFile_pushButton_clicked);
+
     connect(&MySerial,&QSerialPort::readyRead,this,&MainWindow::readSerialDataSlot);
 
     connect(MyTimer,&QTimer::timeout,this,&MainWindow::Send_pushButton_clicked);
-//connect(MyTimer,&QTimer::timeout,this,&MainWindow::temp);
+
+    connect(Timer,&QTimer::timeout,this,&MainWindow::updateTime);
+
     connect(ui->checkBox_timing,&QCheckBox::clicked,this,&MainWindow::CheckBox_timing_stateChanged);
 
 }
@@ -81,7 +97,7 @@ void MainWindow::SeachPort()
         if(serial.open(QIODevice::ReadWrite))
         {
             ui->comboBox_serial->addItem(info.portName());
-            qDebug()<<info.portName();
+            //qDebug()<<info.portName();
             serial.close();
         }
     }
@@ -146,6 +162,11 @@ void MainWindow::Open_pushButton_clicked()
 
             ui->pushButton_openSerial->setText("关闭串口");
             QMessageBox::about(NULL, "提示", "打开串口成功");
+
+            QPalette pa;
+            pa.setColor(QPalette::WindowText,Qt::green);
+            ui->label_state->setText("已连接");
+            ui->label_state->setPalette(pa);
             //
         }
         else//串口打开失败
@@ -160,6 +181,10 @@ void MainWindow::Open_pushButton_clicked()
     else if(ui->pushButton_openSerial->text() == "关闭串口")
     {
         ui->pushButton_openSerial->setText("打开串口");
+        QPalette pa;
+        pa.setColor(QPalette::WindowText,Qt::red);
+        ui->label_state->setText("未连接");
+        ui->label_state->setPalette(pa);
         SeachPort();
         MySerial.close();
     }
@@ -220,12 +245,14 @@ void MainWindow::readSerialDataSlot()
 
 
     QByteArray readData = MySerial.readAll();//读取串口数据
-    count_recive += readData.size();
+    //count_recive += readData.size();
     //qDebug() <<  count_recive << Qt::endl;
+    QString str = QString::fromLocal8Bit(readData);     //接收中文
+    count_recive += str.size();
     ui->label_Count_rec->setText("R:" + QString::number(count_recive));
     if (ui->checkBox_time->isChecked())
     {
-        QDateTime curDateTime=QDateTime::currentDateTime();
+        curDateTime=QDateTime::currentDateTime();
         ui->textEdit_recived->append("[" + curDateTime.time().toString() + "]");
     }
 
@@ -234,12 +261,12 @@ void MainWindow::readSerialDataSlot()
         if(ui->checkBox_hexdisplay->isChecked())//选中HEX显示
         {
             readData=readData.toHex();//转为HEX
-            ui->textEdit_recived->append(readData);
+            ui->textEdit_recived->append(str);
 
         }
         else//未选中HEX显示
         {
-            ui->textEdit_recived->append(readData);
+            ui->textEdit_recived->append(str);
         }
         readData.clear();//清除接收缓存
     }
@@ -249,8 +276,14 @@ void MainWindow::readSerialDataSlot()
 void MainWindow::CheckBox_timing_stateChanged()
 {
 //    connect(MyTimer,&QTimer::timeout,this,&MainWindow::Send_pushButton_clicked);
-    if (ui->checkBox_timing->isChecked() && !ui->lineEdit->text().isEmpty())
+    if (ui->checkBox_timing->isChecked())
     {
+        if (ui->lineEdit->text().isEmpty() || ui->pushButton_openSerial->text() == "打开串口")
+        {
+            ui->checkBox_timing->setChecked(false);
+            QMessageBox::about(NULL, "提示", "串口未打开或未输入定时时间");
+            return;
+        }
         if (MyTimer->isActive())
         {
             return ;
@@ -278,13 +311,13 @@ void MainWindow::CheckBox_timing_stateChanged()
     }
 }
 
-void MainWindow::temp()
+void MainWindow::updateTime()
 {
-//    temp_I++;
-//    qDebug() << temp_I <<Qt::endl;
-
-    Send_pushButton_clicked();
+    curDateTime=QDateTime::currentDateTime();
+    ui->label_time->setText("当前时间:"+curDateTime.time().toString());
 }
+
+
 
 void MainWindow::ClearSend_pushButton_clicked()
 {
@@ -294,5 +327,47 @@ void MainWindow::ClearSend_pushButton_clicked()
 void MainWindow::ClearRecived_pushButton_clicked()
 {
     ui->textEdit_recived->clear();
+}
+
+void MainWindow::SaveFile_pushButton_clicked()
+{
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Save File"),
+                                                    "", tr("Text Files(*.txt);;C++ Files(*.cpp *.h)"));
+
+    if (fileName != "")
+    {
+        QFile file(fileName);
+        if(!file.open(QIODevice::WriteOnly)){
+
+        }
+        else{
+            QTextStream stream(&file);
+            stream << ui->textEdit_recived->toPlainText();
+            stream.flush();
+            file.close();
+        }
+    }
+}
+
+void MainWindow::LoadFile_pushButton_clicked()
+{
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Open file"), "",tr("Text Files ( *.txt);;c++ Files (*.cpp *.h)"));
+    if (fileName != "")
+    {
+        QString str = "Notepad  -";
+        str += fileName ;
+        setWindowTitle(str);
+
+        QFile file(fileName);
+        if (!file.open(QIODevice::ReadOnly))
+        {
+            QMessageBox::critical(this, tr("Error"), tr("Could not open file"));
+            return;
+        }
+
+        QTextStream in (&file);
+        ui->textEdit_send->setText(in.readAll());
+        file.close();
+    }
 }
 

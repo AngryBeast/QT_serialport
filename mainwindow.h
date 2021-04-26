@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QDateTime>
 #include <QMainWindow>
 #include <QSerialPort>
 #include <QTimer>
@@ -23,9 +24,11 @@ private slots:
     void Send_pushButton_clicked();
     void ClearSend_pushButton_clicked();
     void ClearRecived_pushButton_clicked();
+    void SaveFile_pushButton_clicked();
+    void LoadFile_pushButton_clicked();
     void readSerialDataSlot();
     void CheckBox_timing_stateChanged();
-    void temp();
+    void updateTime();
 
 private:
     Ui::MainWindow *ui;
@@ -34,7 +37,9 @@ private:
     void SeachPort();
     QSerialPort MySerial;
     QTimer *MyTimer;
+    QTimer *Timer;
     int count_recive = 0;
     int count_send = 0;
+    QDateTime curDateTime;
 };
 #endif // MAINWINDOW_H
