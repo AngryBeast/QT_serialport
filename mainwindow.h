@@ -25,7 +25,7 @@ private slots:
     void ClearRecived_pushButton_clicked();
     void readSerialDataSlot();
     void CheckBox_timing_stateChanged();
-
+    void temp();
 
 private:
     Ui::MainWindow *ui;
@@ -34,5 +34,7 @@ private:
     void SeachPort();
     QSerialPort MySerial;
     QTimer *MyTimer;
+    int count_recive = 0;
+    int count_send = 0;
 };
 #endif // MAINWINDOW_H

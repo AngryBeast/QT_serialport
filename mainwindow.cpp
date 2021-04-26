@@ -65,7 +65,8 @@ void MainWindow::InitPort()
     connect(ui->pushButton_clearRecived,&QPushButton::clicked,this,&MainWindow::ClearRecived_pushButton_clicked);
     connect(&MySerial,&QSerialPort::readyRead,this,&MainWindow::readSerialDataSlot);
 
-    //connect(MyTimer,&QTimer::timeout,this,&MainWindow::Send_pushButton_clicked);
+    connect(MyTimer,&QTimer::timeout,this,&MainWindow::Send_pushButton_clicked);
+//connect(MyTimer,&QTimer::timeout,this,&MainWindow::temp);
     connect(ui->checkBox_timing,&QCheckBox::clicked,this,&MainWindow::CheckBox_timing_stateChanged);
 
 }
@@ -170,20 +171,25 @@ void MainWindow::Send_pushButton_clicked()
     //qDebug() << str << Qt::endl;
     QString SendData;
     QByteArray Send;//HEX发送
+
+
     if(ui->pushButton_openSerial->text()=="关闭串口")//打开串口才可以发送数据
     {
         if(!ui->textEdit_send->toPlainText().isEmpty())//发送区不为空
         {
             SendData = ui->textEdit_send->toPlainText();//获取发送区的数据
 
+            count_send += SendData.size();
+            ui->label_Count_send->setText("S:" + QString::number(count_send));
+
             if(ui->checkBox_hexsend->isChecked())//SendCheckBox被选中HEX发送
             {
-                Send.append(SendData).toHex();//转HEX存储
+                Send.append(SendData.toLocal8Bit()).toHex();//转HEX存储
                 // qDebug()<<SendHex<<endl;
             }
             else//没有选中HEX发送
             {
-                Send.append(SendData);
+                Send.append(SendData.toLocal8Bit());
                 //qDebug()<<SendHex<<endl;
             }
 
@@ -197,6 +203,8 @@ void MainWindow::Send_pushButton_clicked()
         else//发送区为空
         {
             QMessageBox::about(NULL, "提示", "没有数据哦");
+            ui->checkBox_timing->setChecked(false);
+            MyTimer->stop();
         }
     }
     else//串口未打开
@@ -210,8 +218,11 @@ void MainWindow::Send_pushButton_clicked()
 void MainWindow::readSerialDataSlot()
 {
 
-    QByteArray readData = MySerial.readAll();//读取串口数据
 
+    QByteArray readData = MySerial.readAll();//读取串口数据
+    count_recive += readData.size();
+    //qDebug() <<  count_recive << Qt::endl;
+    ui->label_Count_rec->setText("R:" + QString::number(count_recive));
     if (ui->checkBox_time->isChecked())
     {
         QDateTime curDateTime=QDateTime::currentDateTime();
@@ -237,17 +248,42 @@ void MainWindow::readSerialDataSlot()
 
 void MainWindow::CheckBox_timing_stateChanged()
 {
-    connect(MyTimer,&QTimer::timeout,this,&MainWindow::Send_pushButton_clicked);
-    if (ui->checkBox_timing->isChecked())
+//    connect(MyTimer,&QTimer::timeout,this,&MainWindow::Send_pushButton_clicked);
+    if (ui->checkBox_timing->isChecked() && !ui->lineEdit->text().isEmpty())
     {
-        MyTimer->start(ui->lineEdit->text().toInt());
-//        qDebug() << ui->lineEdit->text().toInt();
+        if (MyTimer->isActive())
+        {
+            return ;
+        }
+        else
+        {
+            int ms = ui->lineEdit->text().toInt();
+            MyTimer->start(ms);
+        }
     }
     else
     {
-//        qDebug() << "down" << Qt::endl;
-        MyTimer->stop();
+        if (MyTimer->isActive())
+        {
+            MyTimer->stop();
+            return ;
+        }
+        else
+        {
+            qDebug() << "down" << Qt::endl;
+            return;
+        }
+
+
     }
+}
+
+void MainWindow::temp()
+{
+//    temp_I++;
+//    qDebug() << temp_I <<Qt::endl;
+
+    Send_pushButton_clicked();
 }
 
 void MainWindow::ClearSend_pushButton_clicked()
