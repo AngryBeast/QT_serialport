@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QTextCodec>
+#include <QAction>
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -15,6 +16,33 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     setWindowTitle("串口助手  BY:AngryBeast");
+
+    fileMenu = new QMenu(tr("&File"),this);
+    aboutMenu = new QMenu(tr("&About"),this);
+
+    openAction = new QAction(tr("&Open"), this);
+    saveAction = new QAction(tr("&Save"), this);
+    exitAction = new QAction(tr("&Exit"), this);
+    infoAction = new QAction(tr("&Info"), this);
+
+    connect(openAction, &QAction::triggered, this, &MainWindow::LoadFile_pushButton_clicked);
+    connect(saveAction, &QAction::triggered, this, &MainWindow::SaveFile_pushButton_clicked);
+    connect(exitAction, &QAction::triggered, this, &MainWindow::quit);
+    connect(infoAction, &QAction::triggered, this, &MainWindow::ShowInfo);
+
+    fileMenu->addAction(openAction);
+    fileMenu->addAction(saveAction);
+    fileMenu->addAction(exitAction);
+
+    aboutMenu->addAction(infoAction);
+
+    menuBar()->addMenu(fileMenu);
+    menuBar()->addMenu(aboutMenu);
+
+    ui->textEdit_recived->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    ui->textEdit_send->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+
+    ui->textEdit_recived->setReadOnly(true);
     MainWindow::InitPort();
 
 
@@ -74,8 +102,8 @@ void MainWindow::InitPort()
     connect(ui->pushButton_send,&QPushButton::clicked,this,&MainWindow::Send_pushButton_clicked);
     connect(ui->pushButton_clearSend,&QPushButton::clicked,this,&MainWindow::ClearSend_pushButton_clicked);
     connect(ui->pushButton_clearRecived,&QPushButton::clicked,this,&MainWindow::ClearRecived_pushButton_clicked);
-    connect(ui->pushButton_loadFile,&QPushButton::clicked,this,&MainWindow::LoadFile_pushButton_clicked);
-    connect(ui->pushButton_savaFile,&QPushButton::clicked,this,&MainWindow::SaveFile_pushButton_clicked);
+  //  connect(ui->pushButton_loadFile,&QPushButton::clicked,this,&MainWindow::LoadFile_pushButton_clicked);
+   // connect(ui->pushButton_savaFile,&QPushButton::clicked,this,&MainWindow::SaveFile_pushButton_clicked);
 
     connect(&MySerial,&QSerialPort::readyRead,this,&MainWindow::readSerialDataSlot);
 
@@ -253,7 +281,9 @@ void MainWindow::readSerialDataSlot()
     if (ui->checkBox_time->isChecked())
     {
         curDateTime=QDateTime::currentDateTime();
-        ui->textEdit_recived->append("[" + curDateTime.time().toString() + "]");
+//        ui->textEdit_recived->append("[" + curDateTime.time().toString() + "]");
+        ui->textEdit_recived->moveCursor(QTextCursor::End);
+        ui->textEdit_recived->insertPlainText("[" + curDateTime.time().toString() + "]");
     }
 
     if(!readData.isNull())//将读到的数据显示到数据接收区
@@ -261,16 +291,19 @@ void MainWindow::readSerialDataSlot()
         if(ui->checkBox_hexdisplay->isChecked())//选中HEX显示
         {
             readData=readData.toHex();//转为HEX
-            ui->textEdit_recived->append(str);
-
+//            ui->textEdit_recived->append(str);
+            ui->textEdit_recived->moveCursor(QTextCursor::End);
+            ui->textEdit_recived->insertPlainText(str);
         }
         else//未选中HEX显示
         {
-            ui->textEdit_recived->append(str);
+//            ui->textEdit_recived->append(str);
+            ui->textEdit_recived->moveCursor(QTextCursor::End);
+            ui->textEdit_recived->insertPlainText(str);
         }
         readData.clear();//清除接收缓存
     }
-
+    ui->textEdit_recived->moveCursor(QTextCursor::End);
 }
 
 void MainWindow::CheckBox_timing_stateChanged()
@@ -292,6 +325,7 @@ void MainWindow::CheckBox_timing_stateChanged()
         {
             int ms = ui->lineEdit->text().toInt();
             MyTimer->start(ms);
+            ui->pushButton_send->setEnabled(false);
         }
     }
     else
@@ -299,6 +333,7 @@ void MainWindow::CheckBox_timing_stateChanged()
         if (MyTimer->isActive())
         {
             MyTimer->stop();
+            ui->pushButton_send->setEnabled(true);
             return ;
         }
         else
@@ -371,3 +406,42 @@ void MainWindow::LoadFile_pushButton_clicked()
     }
 }
 
+
+void MainWindow::quit()
+{
+    QMessageBox messageBox;
+
+    messageBox.setWindowTitle(tr("Seriol port"));
+    messageBox.setText(tr("Do you want to quit?"));
+    messageBox.setStandardButtons(QMessageBox::No | QMessageBox::Yes);
+
+    if (messageBox.exec() == QMessageBox::Yes)
+    {
+        MainWindow::close();
+    }
+}
+
+void MainWindow::ShowInfo()
+{
+    QMessageBox messageBox;
+   // QDialog dialog();
+
+//    messageBox.setWindowTitle(tr("Seriol port"));
+    messageBox.setText("Writen By:AngryBeast  2021/4/26");
+    messageBox.exec();
+}
+
+
+/************************************************************************
+
+    _                           ____                 _
+   / \   _ __   __ _ _ __ _   _| __ )  ___  __ _ ___| |_
+  / _ \ | '_ \ / _` | '__| | | |  _ \ / _ \/ _` / __| __|
+ / ___ \| | | | (_| | |  | |_| | |_) |  __/ (_| \__ \ |_
+/_/   \_\_| |_|\__, |_|   \__, |____/ \___|\__,_|___/\__|
+               |___/      |___/
+
+
+
+
+*************************************************************************/

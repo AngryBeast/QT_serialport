@@ -29,6 +29,8 @@ private slots:
     void readSerialDataSlot();
     void CheckBox_timing_stateChanged();
     void updateTime();
+    void quit();
+    void ShowInfo();
 
 private:
     Ui::MainWindow *ui;
@@ -41,5 +43,15 @@ private:
     int count_recive = 0;
     int count_send = 0;
     QDateTime curDateTime;
+
+
+    QMenuBar *menubar;
+    QMenu *fileMenu;
+    QMenu *aboutMenu;
+    QAction *openAction;
+    QAction *saveAction;
+    QAction *exitAction;
+    QAction *infoAction;
+
 };
 #endif // MAINWINDOW_H
